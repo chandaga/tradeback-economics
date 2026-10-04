@@ -7,6 +7,9 @@ Computes:
 3. Exact answers to the 10 specific business questions from Section 17.
 4. Global 12-Variable Tornado Sensitivity Analysis.
 
+All mathematical derivations are grounded in the Canonical 2-Lever Architecture:
+    ΔLTC = (ΔN_orders * CM_order) + N_TB * (E[R_net_ops] + E[CAC_avoided] - C_TB)
+
 Zero external dependencies required (Pure Python with built-in bisection solver).
 References:
 - docs/ARCHITECTURE_1PAGER.md
@@ -71,82 +74,161 @@ def bisection_solve(func: Callable[[float], float], a: float, b: float, tol: flo
             
     return (a + b) / 2.0
 
-def solve_breakeven_delta_f(target_net_recovery: float, custom_params: Dict[str, float] = None) -> float:
+def solve_breakeven_recovery(target_delta_f: float, custom_params: Dict[str, float] = None) -> float:
     """
-    Finds the exact causal frequency uplift (Delta_f) required to achieve
-    Delta_Contribution = 0 given a fixed net recovery value E[R_net].
+    Finds the exact net recovery E[R_net_ops] required to achieve
+    Delta_Contribution = 0 given a fixed causal frequency uplift Delta_f.
+    
+    Derived from the Canonical Equation:
+        ΔLTC = (ΔN_orders * CM_order) + N_TB * (E[R_net_ops] + E[CAC_avoided] - C_TB) = 0
+        ==> E[R_net_ops] = C_TB - E[CAC_avoided] - (ΔN_orders * CM_order) / N_TB
     """
     params = get_default_assumptions()
     if custom_params:
         params.update(custom_params)
         
-    def objective_f(delta_f_val: float) -> float:
-        test_p = params.copy()
-        test_p["causal_frequency_uplift"] = delta_f_val
-        curr_net = compute_unit_net_salvage_recovery(test_p)
-        diff = target_net_recovery - curr_net
-        test_p["b2b_gross_price"] += diff / max(0.01, test_p["b2b_route_prob"])
-        res = calculate_tier0_economics(test_p)
-        return res.delta_contribution_tradeback
+    eval_window_years = 3.0
+    lifespan_years = min(eval_window_years, params["customer_lifespan_months"] / 12.0)
+    
+    f_base = params["baseline_annual_orders"]
+    delta_n_orders = target_delta_f * lifespan_years
+    n_orders_adopter = (f_base + target_delta_f) * lifespan_years
+    
+    n_stranded = params.get("stranded_garments_terminal", 1.0)
+    n_eligible_repeats = max(0.0, n_orders_adopter - 1.0 - n_stranded)
+    u = params.get("order_utilization_rate", 0.75)
+    n_tb = n_eligible_repeats * u
+    
+    aov = params["aov"]
+    gm = params["gross_margin_pct"]
+    c_fulfill = params["forward_fulfillment_cost"]
+    cm_order = (aov * gm) - c_fulfill
+    
+    cac_rep = params["repeat_ad_cac"]
+    p_paid_rep = params.get("paid_repeat_share", 0.50)
+    s_ad = params.get("ad_savings_pct", 0.60)
+    cac_avoided = cac_rep * s_ad * p_paid_rep
+    
+    credit_pct = params["tradeback_credit_pct"]
+    beta = params.get("credit_breakage_pct", 0.0)
+    c_tb = aov * credit_pct * (1.0 - beta)
+    
+    if n_tb <= 1e-6:
+        # If no returns occur, break-even requires volume margin >= 0
+        return 0.0
+        
+    req_net_recovery = c_tb - cac_avoided - (delta_n_orders * cm_order) / n_tb
+    return req_net_recovery
 
-    return bisection_solve(objective_f, -0.5, 4.0)
-
-def solve_breakeven_recovery(target_delta_f: float, custom_params: Dict[str, float] = None) -> float:
+def solve_breakeven_delta_f(target_net_recovery: float, custom_params: Dict[str, float] = None) -> float:
     """
-    Finds the exact net recovery E[R_net] required to achieve
-    Delta_Contribution = 0 given a fixed causal frequency uplift Delta_f.
+    Finds the exact causal frequency uplift (Delta_f) required to achieve
+    Delta_Contribution = 0 given a fixed net recovery value E[R_net_ops].
     """
     params = get_default_assumptions()
     if custom_params:
         params.update(custom_params)
-    params["causal_frequency_uplift"] = target_delta_f
+        
+    eval_window_years = 3.0
+    lifespan_years = min(eval_window_years, params["customer_lifespan_months"] / 12.0)
+    
+    f_base = params["baseline_annual_orders"]
+    n_stranded = params.get("stranded_garments_terminal", 1.0)
+    u = params.get("order_utilization_rate", 0.75)
+    
+    aov = params["aov"]
+    gm = params["gross_margin_pct"]
+    c_fulfill = params["forward_fulfillment_cost"]
+    cm_order = (aov * gm) - c_fulfill
+    
+    cac_rep = params["repeat_ad_cac"]
+    p_paid_rep = params.get("paid_repeat_share", 0.50)
+    s_ad = params.get("ad_savings_pct", 0.60)
+    cac_avoided = cac_rep * s_ad * p_paid_rep
+    
+    credit_pct = params["tradeback_credit_pct"]
+    beta = params.get("credit_breakage_pct", 0.0)
+    c_tb = aov * credit_pct * (1.0 - beta)
+    
+    circ_unit_spread = target_net_recovery + cac_avoided - c_tb
+    
+    def objective_f(delta_f_val: float) -> float:
+        delta_n = delta_f_val * lifespan_years
+        n_adopter = (f_base + delta_f_val) * lifespan_years
+        n_tb = max(0.0, n_adopter - 1.0 - n_stranded) * u
+        delta_ltc = (delta_n * cm_order) + (n_tb * circ_unit_spread)
+        return delta_ltc
 
-    def objective_rec(net_rec_val: float) -> float:
-        test_p = params.copy()
-        curr_net = compute_unit_net_salvage_recovery(test_p)
-        diff = net_rec_val - curr_net
-        test_p["b2b_gross_price"] += diff / max(0.01, test_p["b2b_route_prob"])
-        res = calculate_tier0_economics(test_p)
-        return res.delta_contribution_tradeback
-
-    return bisection_solve(objective_rec, -200.0, 700.0)
+    return bisection_solve(objective_f, -0.5, 3.0)
 
 def solve_max_affordable_credit_pct(custom_params: Dict[str, float] = None) -> float:
     """
     Solves for the maximum credit % at which Delta_Contribution >= 0.
+    
+    Formula:
+        C_TB,max = E[R_net_ops] + E[CAC_avoided] + (ΔN_orders * CM_order) / N_TB
+        Credit_%,max = C_TB,max / AOV
     """
     params = get_default_assumptions()
     if custom_params:
         params.update(custom_params)
-
-    def objective_credit(credit_pct_val: float) -> float:
-        test_p = params.copy()
-        test_p["tradeback_credit_pct"] = credit_pct_val
-        res = calculate_tier0_economics(test_p)
-        return res.delta_contribution_tradeback
-
-    return bisection_solve(objective_credit, 0.05, 0.60)
+        
+    eval_window_years = 3.0
+    lifespan_years = min(eval_window_years, params["customer_lifespan_months"] / 12.0)
+    
+    f_base = params["baseline_annual_orders"]
+    delta_f = params["causal_frequency_uplift"]
+    delta_n_orders = delta_f * lifespan_years
+    n_orders_adopter = (f_base + delta_f) * lifespan_years
+    
+    n_stranded = params.get("stranded_garments_terminal", 1.0)
+    n_eligible_repeats = max(0.0, n_orders_adopter - 1.0 - n_stranded)
+    u = params.get("order_utilization_rate", 0.75)
+    n_tb = n_eligible_repeats * u
+    
+    aov = params["aov"]
+    gm = params["gross_margin_pct"]
+    c_fulfill = params["forward_fulfillment_cost"]
+    cm_order = (aov * gm) - c_fulfill
+    
+    cac_rep = params["repeat_ad_cac"]
+    p_paid_rep = params.get("paid_repeat_share", 0.50)
+    s_ad = params.get("ad_savings_pct", 0.60)
+    cac_avoided = cac_rep * s_ad * p_paid_rep
+    
+    unit_net_salvage = compute_unit_net_salvage_recovery(params)
+    
+    if n_tb <= 1e-6:
+        return 0.35
+        
+    max_c_tb = unit_net_salvage + cac_avoided + (delta_n_orders * cm_order) / n_tb
+    max_credit_pct = max_c_tb / aov
+    return max_credit_pct
 
 def solve_max_tolerable_processing_cost(custom_params: Dict[str, float] = None) -> float:
     """
     Solves for the maximum QC + inspection cost tolerable before TradeBack becomes dilutive.
+    
+    Formula:
+        C_QC,max = C_QC,base + (ΔLTC_adopter / N_TB)
     """
     params = get_default_assumptions()
     if custom_params:
         params.update(custom_params)
-
-    def objective_qc(qc_val: float) -> float:
-        test_p = params.copy()
-        test_p["qc_inspection_cost"] = qc_val
-        res = calculate_tier0_economics(test_p)
-        return res.delta_contribution_tradeback
-
-    return bisection_solve(objective_qc, 0.0, 300.0)
+        
+    res = calculate_tier0_economics(params)
+    if res.n_returns_adopter <= 1e-6:
+        return params.get("qc_inspection_cost", 45.0)
+        
+    current_qc = params.get("qc_inspection_cost", 45.0)
+    buffer_per_return = res.delta_ltc_adopter / res.n_returns_adopter
+    max_qc = current_qc + buffer_per_return
+    return max_qc
 
 def generate_breakeven_isocline(custom_params: Dict[str, float] = None) -> List[Dict[str, float]]:
     """
     Generates a 2D Break-Even curve mapping
-    Causal Order Uplift (Delta_f) to Required Net Recovery E[R_net].
+    Causal Order Uplift (Delta_f) to Required Net Recovery E[R_net_ops].
     """
     delta_f_points = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.2, 1.5]
     curve_data = []
@@ -170,15 +252,15 @@ def run_tornado_sensitivity(custom_params: Dict[str, float] = None) -> List[Dict
         "causal_frequency_uplift",
         "tradeback_credit_pct",
         "tradeback_adoption_rate",
+        "order_utilization_rate",
+        "paid_repeat_share",
+        "ad_savings_pct",
         "b2b_gross_price",
         "qc_inspection_cost",
         "gross_margin_pct",
         "aov",
         "repeat_ad_cac",
-        "ad_savings_pct",
         "swap_failure_rate",
-        "d2c_cannibalization_rate",
-        "baseline_annual_orders",
     ]
     
     tornado_results = []
@@ -221,7 +303,7 @@ def answer_section17_questions(custom_params: Dict[str, float] = None) -> Dict[s
     if custom_params:
         params.update(custom_params)
         
-    # Q1: If credit is 20%, what min net recovery is required?
+    # Q1: At 20% credit and base uplift, what min net recovery is required?
     q1_min_rec = solve_breakeven_recovery(params["causal_frequency_uplift"], params)
     
     # Q2: If net recovery is only ₹250, what incremental frequency is required?
@@ -232,25 +314,28 @@ def answer_section17_questions(custom_params: Dict[str, float] = None) -> Dict[s
     p_q3["causal_frequency_uplift"] = 0.25
     res_q3 = calculate_tier0_economics(p_q3)
     
-    # Q4: If only 40% of returned garments can be resold (e.g. B2B + D2C = 40%, 60% loss/rag)?
+    # Q4: If only 40% of returned garments can be resold (e.g. B2B 30%, D2C 10%, writeoff 60%)?
     p_q4 = params.copy()
     p_q4["b2b_route_prob"] = 0.30
     p_q4["d2c_route_prob"] = 0.10
+    p_q4["upcycle_route_prob"] = 0.0
+    p_q4["recycle_route_prob"] = 0.0
     p_q4["writeoff_route_prob"] = 0.60
     res_q4 = calculate_tier0_economics(p_q4)
     
     # Q5: What is the maximum TradeBack credit % we can offer?
     q5_max_credit = solve_max_affordable_credit_pct(params)
     
-    # Q6: Minimum resale probability required
+    # Q6: Minimum resale probability required (scaling B2B & D2C routes)
     p_q6 = params.copy()
     def obj_q6(scale: float) -> float:
         tp = p_q6.copy()
         tp["b2b_route_prob"] = 0.60 * scale
         tp["d2c_route_prob"] = 0.20 * scale
-        tp["writeoff_route_prob"] = max(0.0, 1.0 - (tp["b2b_route_prob"] + tp["d2c_route_prob"] + 0.15))
+        rem = max(0.0, 1.0 - (tp["b2b_route_prob"] + tp["d2c_route_prob"] + 0.15))
+        tp["writeoff_route_prob"] = rem
         return calculate_tier0_economics(tp).delta_contribution_tradeback
-    q6_scale = bisection_solve(obj_q6, 0.1, 1.2)
+    q6_scale = bisection_solve(obj_q6, 0.1, 1.5)
     q6_min_resale_prob = (0.60 + 0.20) * q6_scale
         
     # Q7: Maximum processing cost tolerable?
@@ -258,11 +343,12 @@ def answer_section17_questions(custom_params: Dict[str, float] = None) -> Dict[s
     
     # Q8: How much does a 5%, 10%, 20% increase in retention (lifespan) change economics?
     ret_impacts = {}
+    base_accretion = calculate_tier0_economics(params).delta_contribution_tradeback
     for pct in [0.05, 0.10, 0.20]:
         p_ret = params.copy()
         p_ret["customer_lifespan_months"] = params["customer_lifespan_months"] * (1.0 + pct)
         res_ret = calculate_tier0_economics(p_ret)
-        diff = res_ret.delta_contribution_tradeback - calculate_tier0_economics(params).delta_contribution_tradeback
+        diff = res_ret.delta_contribution_tradeback - base_accretion
         ret_impacts[f"+{int(pct*100)}% retention"] = round(diff, 2)
         
     # Q10: TradeBack vs Promo Coupon

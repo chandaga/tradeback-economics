@@ -130,16 +130,18 @@ if category == "1. Core Customer Economics":
     p["cac"] = st.sidebar.slider("Customer Acquisition Cost (₹)", 150.0, 800.0, float(p["cac"]), step=25.0)
     p["baseline_annual_orders"] = st.sidebar.slider("Baseline Orders/Year (f_base)", 1.0, 5.0, float(p["baseline_annual_orders"]), step=0.1)
     p["customer_lifespan_months"] = st.sidebar.slider("Active Lifespan (Months)", 6.0, 36.0, float(p["customer_lifespan_months"]), step=3.0)
-    p["repeat_ad_cac"] = st.sidebar.slider("Repeat Retargeting CAC (M_base ₹)", 30.0, 300.0, float(p["repeat_ad_cac"]), step=10.0)
+    p["repeat_ad_cac"] = st.sidebar.slider("Repeat Retargeting CAC (CAC_rep ₹)", 30.0, 300.0, float(p["repeat_ad_cac"]), step=10.0)
+    p["paid_repeat_share"] = st.sidebar.slider("Paid Repeat Share % (p_paid rep)", 0.20, 0.80, float(p.get("paid_repeat_share", 0.50)), step=0.05, format="%.2f", help="% of repeat orders that burn paid retargeting ads")
     p["forward_fulfillment_cost"] = st.sidebar.slider("Forward Fulfillment Freight (₹)", 40.0, 120.0, float(p["forward_fulfillment_cost"]), step=5.0)
 
 elif category == "2. TradeBack Policy & Adoption":
     st.sidebar.markdown("#### TradeBack Customer & Credit Rules")
     p["tradeback_credit_pct"] = st.sidebar.slider("TradeBack Credit %", 0.05, 0.40, float(p["tradeback_credit_pct"]), step=0.01, format="%.2f")
-    p["tradeback_adoption_rate"] = st.sidebar.slider("Adoption Rate % (α)", 0.05, 0.90, float(p["tradeback_adoption_rate"]), step=0.05, format="%.2f")
+    p["tradeback_adoption_rate"] = st.sidebar.slider("Customer Adoption Rate % (α)", 0.05, 0.90, float(p["tradeback_adoption_rate"]), step=0.05, format="%.2f")
+    p["order_utilization_rate"] = st.sidebar.slider("Order Utilization Rate % (u)", 0.40, 0.95, float(p.get("order_utilization_rate", 0.75)), step=0.05, format="%.2f", help="% of eligible orders where customer returns an item")
     p["causal_frequency_uplift"] = st.sidebar.slider("Causal Order Uplift (Δf orders/yr)", 0.0, 2.0, float(p["causal_frequency_uplift"]), step=0.05)
-    p["ad_savings_pct"] = st.sidebar.slider("Repeat Ad Savings % (S_ad)", 0.0, 1.00, float(p["ad_savings_pct"]), step=0.05, format="%.2f")
-    p["credit_breakage_pct"] = st.sidebar.slider("Credit Breakage % (β)", 0.0, 0.30, float(p["credit_breakage_pct"]), step=0.01, format="%.2f", help="Unredeemed expired credit %")
+    p["ad_savings_pct"] = st.sidebar.slider("Avoided Ad Factor % (S_ad)", 0.0, 1.00, float(p["ad_savings_pct"]), step=0.05, format="%.2f")
+    p["credit_breakage_pct"] = st.sidebar.slider("Credit Breakage % (β)", 0.0, 0.30, float(p["credit_breakage_pct"]), step=0.01, format="%.2f", help="Unredeemed credit % (locked at 0% for instant checkout)")
     p["stranded_garments_terminal"] = st.sidebar.slider("Stranded Garments at Churn", 0.0, 3.0, float(p["stranded_garments_terminal"]), step=0.5, help="Clothes left in closet when customer leaves")
 
 elif category == "3. Reverse Logistics & RTO Friction":
@@ -179,15 +181,17 @@ category_params = {
         ("baseline_annual_orders", "Baseline Orders/Year"),
         ("customer_lifespan_months", "Active Customer Lifespan"),
         ("repeat_ad_cac", "Repeat Retargeting CAC"),
+        ("paid_repeat_share", "Paid Repeat Share %"),
         ("forward_fulfillment_cost", "Forward Delivery Freight")
     ],
     "2. TradeBack Policy & Adoption": [
         ("tradeback_credit_pct", "TradeBack Credit %"),
-        ("credit_breakage_pct", "Credit Breakage % (β)"),
+        ("tradeback_adoption_rate", "Customer Adoption Rate % (α)"),
+        ("order_utilization_rate", "Order Utilization Rate % (u)"),
         ("causal_frequency_uplift", "Causal Order Uplift (Δf)"),
-        ("tradeback_adoption_rate", "Adoption Rate % (α)"),
-        ("stranded_garments_terminal", "Stranded Garments at Churn"),
-        ("ad_savings_pct", "Repeat Ad Savings %")
+        ("ad_savings_pct", "Avoided Ad Factor % (S_ad)"),
+        ("credit_breakage_pct", "Credit Breakage % (β)"),
+        ("stranded_garments_terminal", "Stranded Garments at Churn")
     ],
     "3. Reverse Logistics & RTO Friction": [
         ("swap_failure_rate", "Doorstep Swap Failure Rate %"),
@@ -381,6 +385,36 @@ tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
 with tab1:
     st.subheader("36-Month Lifetime Cash Flows per Acquired Customer")
     
+    # Canonical 2-Lever Decomposition Callout Cards
+    st.markdown("#### ⚖️ Canonical 2-Lever Economic Decomposition")
+    c_lev1, c_lev2, c_lev3, c_lev4 = st.columns(4)
+    with c_lev1:
+        st.metric(
+            label="1. Volume Margin Expansion",
+            value=f"+₹{res.incremental_volume_margin:,.2f}",
+            delta=f"+{res.delta_n_orders:.2f} orders × ₹{res.cm_order:.0f} CM"
+        )
+    with c_lev2:
+        st.metric(
+            label="2. Net Circular Balance",
+            value=f"₹{res.net_unit_circular_balance:,.2f}",
+            delta=f"{res.n_returns_adopter:.3f} returns × ₹{res.circular_unit_spread:.2f} spread",
+            delta_color="normal"
+        )
+    with c_lev3:
+        st.metric(
+            label="Adopter Accretion (ΔLTC)",
+            value=f"+₹{res.delta_ltc_adopter:,.2f}",
+            delta="Lever 1 + Lever 2"
+        )
+    with c_lev4:
+        st.metric(
+            label="Cohort Accretion (α = 40%)",
+            value=f"+₹{res.delta_contribution_tradeback:,.2f}",
+            delta=f"vs Promo C: +₹{res.tradeback_vs_promo_delta:,.2f}"
+        )
+    
+    st.markdown("---")
     col_t1, col_t2 = st.columns([1, 1])
     
     with col_t1:
@@ -388,7 +422,7 @@ with tab1:
         fig_bar = go.Figure()
         fig_bar.add_trace(go.Bar(
             name="36-Month Net Contribution (₹)",
-            x=["Baseline D2C", "TradeBack Model", "₹200 Promo Coupon"],
+            x=["Baseline D2C (A)", "TradeBack Model (B)", "₹200 Promo Coupon (C)"],
             y=[res.ltc_baseline, res.ltc_cohort_tradeback, res.ltc_benchmark_promo],
             marker_color=["#1f77b4", "#2ca02c" if res.delta_contribution_tradeback >= 0 else "#d62728", "#ff7f0e"],
             text=[f"₹{res.ltc_baseline:,.0f}", f"₹{res.ltc_cohort_tradeback:,.0f}", f"₹{res.ltc_benchmark_promo:,.0f}"],
@@ -452,7 +486,7 @@ with tab1:
             f"{custom_params['baseline_annual_orders']:.2f}", f"{res.n_orders_base:.2f}", "0.00",
             f"₹{res.n_orders_base * custom_params['aov'] * custom_params['gross_margin_pct']:,.0f}",
             f"-₹{res.n_orders_base * custom_params['forward_fulfillment_cost']:,.0f}", "₹0", "₹0",
-            f"-₹{max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac']:,.0f}",
+            f"-₹{max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac'] * custom_params.get('paid_repeat_share', 0.50):,.0f}",
             f"-₹{custom_params['cac']:,.0f}", f"₹{res.ltc_baseline:,.0f}", f"{res.ltv_cac_baseline:.2f}x"
         ],
         "TradeBack Model (B)": [
@@ -462,7 +496,7 @@ with tab1:
             f"-₹{res.n_orders_cohort * custom_params['forward_fulfillment_cost']:,.0f}",
             f"-₹{res.n_returns_cohort * custom_params['aov'] * custom_params['tradeback_credit_pct']:,.0f}",
             f"+₹{res.n_returns_cohort * res.unit_net_salvage_recovery:,.0f}",
-            f"-₹{custom_params['tradeback_adoption_rate'] * res.adopter_repeat_ad_cac_paid + (1.0 - custom_params['tradeback_adoption_rate']) * max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac']:,.0f}",
+            f"-₹{custom_params['tradeback_adoption_rate'] * res.adopter_repeat_ad_cac_paid + (1.0 - custom_params['tradeback_adoption_rate']) * max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac'] * custom_params.get('paid_repeat_share', 0.50):,.0f}",
             f"-₹{custom_params['cac']:,.0f}", f"₹{res.ltc_cohort_tradeback:,.0f}", f"{res.ltv_cac_tradeback:.2f}x"
         ],
         "System C: Promo Coupon": [
@@ -470,7 +504,7 @@ with tab1:
             f"{res.n_orders_cohort:.2f}", "0.00",
             f"₹{res.n_orders_cohort * custom_params['aov'] * custom_params['gross_margin_pct']:,.0f}",
             f"-₹{res.n_orders_cohort * custom_params['forward_fulfillment_cost']:,.0f}", "₹0", "₹0",
-            f"-₹{custom_params['tradeback_adoption_rate'] * max(0.0, res.n_orders_adopter - 1.0) * custom_params['repeat_ad_cac'] * 0.2 + (1.0 - custom_params['tradeback_adoption_rate']) * max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac']:,.0f}",
+            f"-₹{custom_params['tradeback_adoption_rate'] * max(0.0, res.n_orders_adopter - 1.0) * custom_params['repeat_ad_cac'] * custom_params.get('paid_repeat_share', 0.50) * (1.0 - custom_params['ad_savings_pct']) + (1.0 - custom_params['tradeback_adoption_rate']) * max(0.0, res.n_orders_base - 1.0) * custom_params['repeat_ad_cac'] * custom_params.get('paid_repeat_share', 0.50):,.0f}",
             f"-₹{custom_params['cac']:,.0f}", f"₹{res.ltc_benchmark_promo:,.0f}", f"{res.ltv_cac_promo:.2f}x"
         ],
         "Net Accretion (B - A)": [
@@ -604,8 +638,8 @@ with tab4:
 
 # --- TAB 5: MODEL ARCHITECTURE & FORMULAS (1-2 PAGER) ---
 with tab5:
-    st.subheader("📐 Master Architecture & Accounting Identities (1-2 Pager)")
-    st.markdown("Mathematical specifications, order truncation mechanics, and operational identities calibrated to your live inputs.")
+    st.subheader("📐 Master Architecture & Canonical Accounting Identities (1-2 Pager)")
+    st.markdown("Mathematical specifications, 5-route secondary recovery tree, and canonical 2-lever identities calibrated to your live inputs.")
 
     # Download button for co-founder memo
     memo_path = os.path.join(os.path.dirname(__file__), "..", "docs", "MODEL_COMPARISON_1PAGER.md")
@@ -632,13 +666,13 @@ with tab5:
         {
             "Dimension": "Prerequisite Action",
             "System A (Baseline D2C)": "Out-of-pocket repeat order",
-            "System B (TradeBack)": "Physical return of 3-6 mo old item",
+            "System B (TradeBack)": "Physical return of eligible item",
             "System C (Promo Coupon)": "Promo code entry at checkout"
         },
         {
             "Dimension": "Operational Reverse Chain",
-            "System A (Baseline D2C)": "None (Forward shipping only)",
-            "System B (TradeBack)": "Doorstep swap, QC & secondary salvage",
+            "System A (Baseline D2C)": "None (Forward delivery only)",
+            "System B (TradeBack)": "Doorstep swap, QC & 5-route salvage",
             "System C (Promo Coupon)": "None (Pure digital discount)"
         },
         {
@@ -657,7 +691,7 @@ with tab5:
             "Dimension": "Net Accretion vs Baseline A",
             "System A (Baseline D2C)": "Baseline (₹0.00)",
             "System B (TradeBack)": f"+₹{res.delta_contribution_tradeback:,.2f} / customer",
-            "System C (Promo Coupon)": f"+₹{res.delta_contribution_promo:,.2f} / customer"
+            "System C (Promo Coupon)": f"{'+' if res.delta_contribution_promo>=0 else ''}₹{res.delta_contribution_promo:,.2f} / customer"
         },
         {
             "Dimension": "Strategic Superiority",
@@ -668,83 +702,118 @@ with tab5:
     ])
     st.dataframe(matrix_df, use_container_width=True, hide_index=True)
 
-    # 2. Governing Equations by System
+    # 2. 5-Route Recovery Tree Table
     st.markdown("---")
-    st.markdown("### 2. Governing Equations & Accounting Identities")
+    st.markdown("### 2. Audit-Proof 5-Route Secondary Recovery Tree")
+    st.markdown("Itemized probability-weighted secondary market salvage accounting for trend obsolescence and route execution costs:")
+    
+    t_hold = custom_params.get("inventory_holding_days", 45.0)
+    d_trend = custom_params.get("monthly_trend_depreciation", 0.05)
+    trend_decay_pct = round((1.0 - (1.0 - d_trend) ** (t_hold / 30.0)) * 100, 1)
+    deprec_factor = 1.0 - (trend_decay_pct / 100.0)
+
+    v1_gross = custom_params.get("b2b_gross_price", 150.0)
+    v1_net = v1_gross * deprec_factor - custom_params.get("b2b_route_cost", 10.0)
+    w1 = custom_params.get("b2b_route_prob", 0.60) * v1_net
+
+    v2_gross = custom_params.get("d2c_gross_price", 450.0)
+    v2_net = v2_gross * deprec_factor - custom_params.get("d2c_route_cost", 80.0)
+    w2 = custom_params.get("d2c_route_prob", 0.20) * v2_net
+
+    v3_gross = custom_params.get("upcycle_gross_price", 160.0)
+    v3_net = v3_gross - custom_params.get("upcycle_route_cost", 30.0)
+    w3 = custom_params.get("upcycle_route_prob", 0.10) * v3_net
+
+    v4_gross = custom_params.get("recycle_gross_price", 35.0)
+    v4_net = v4_gross - custom_params.get("recycle_route_cost", 5.0)
+    w4 = custom_params.get("recycle_route_prob", 0.05) * v4_net
+
+    v5_net = -custom_params.get("writeoff_route_cost", 10.0)
+    w5 = custom_params.get("writeoff_route_prob", 0.05) * v5_net
+
+    routes_df = pd.DataFrame([
+        {"Route (k)": "1. B2B Jobbers", "Allocation (Pk)": f"{custom_params.get('b2b_route_prob', 0.60)*100:.0f}%", "Gross Value": f"₹{v1_gross:.2f}", "Trend Decay": f"-{trend_decay_pct:.1f}% ({t_hold:.0f}d)", "Route Cost": f"₹{custom_params.get('b2b_route_cost', 10.0):.2f}", "Net Realized": f"₹{v1_net:.2f}", "Weighted Net": f"₹{w1:.2f}"},
+        {"Route (k)": "2. D2C Resale Portal", "Allocation (Pk)": f"{custom_params.get('d2c_route_prob', 0.20)*100:.0f}%", "Gross Value": f"₹{v2_gross:.2f}", "Trend Decay": f"-{trend_decay_pct:.1f}% ({t_hold:.0f}d)", "Route Cost": f"₹{custom_params.get('d2c_route_cost', 80.0):.2f} (clean/shoot)", "Net Realized": f"₹{v2_net:.2f}", "Weighted Net": f"₹{w2:.2f}"},
+        {"Route (k)": "3. Upcycling / Rework", "Allocation (Pk)": f"{custom_params.get('upcycle_route_prob', 0.10)*100:.0f}%", "Gross Value": f"₹{v3_gross:.2f}", "Trend Decay": "0.0%", "Route Cost": f"₹{custom_params.get('upcycle_route_cost', 30.0):.2f}", "Net Realized": f"₹{v3_net:.2f}", "Weighted Net": f"₹{w3:.2f}"},
+        {"Route (k)": "4. Industrial Scrap", "Allocation (Pk)": f"{custom_params.get('recycle_route_prob', 0.05)*100:.0f}%", "Gross Value": f"₹{v4_gross:.2f}", "Trend Decay": "0.0%", "Route Cost": f"₹{custom_params.get('recycle_route_cost', 5.0):.2f}", "Net Realized": f"₹{v4_net:.2f}", "Weighted Net": f"₹{w4:.2f}"},
+        {"Route (k)": "5. Loss / Write-off", "Allocation (Pk)": f"{custom_params.get('writeoff_route_prob', 0.05)*100:.0f}%", "Gross Value": "₹0.00", "Trend Decay": "0.0%", "Route Cost": f"₹{custom_params.get('writeoff_route_cost', 10.0):.2f} (disposal)", "Net Realized": f"₹{v5_net:.2f}", "Weighted Net": f"₹{w5:.2f}"},
+        {"Route (k)": "Gross Realized Salvage E[V_salv]", "Allocation (Pk)": "100%", "Gross Value": "—", "Trend Decay": "—", "Route Cost": "—", "Net Realized": "—", "Weighted Net": f"₹{res.gross_realized_salvage:.2f}"},
+        {"Route (k)": "Less: Blended Collection Friction", "Allocation (Pk)": "—", "Gross Value": "—", "Trend Decay": "—", "Route Cost": "—", "Net Realized": "—", "Weighted Net": f"-₹{res.blended_collection_cost:.2f}"},
+        {"Route (k)": "Less: Intake QC & Steaming", "Allocation (Pk)": "—", "Gross Value": "—", "Trend Decay": "—", "Route Cost": "—", "Net Realized": "—", "Weighted Net": f"-₹{custom_params.get('qc_inspection_cost', 45.0):.2f}"},
+        {"Route (k)": "True Expected Net Salvage E[R_net_ops]", "Allocation (Pk)": "—", "Gross Value": "—", "Trend Decay": "—", "Route Cost": "—", "Net Realized": "—", "Weighted Net": f"₹{res.unit_net_salvage_recovery:.2f}"}
+    ])
+    st.dataframe(routes_df, use_container_width=True, hide_index=True)
+
+    # 3. Governing Equations by System
+    st.markdown("---")
+    st.markdown("### 3. The Canonical 2-Lever Governing Equations")
 
     with st.expander("System A: Conventional D2C Baseline Equations", expanded=True):
-        st.markdown("Every repeat order requires paid performance marketing retargeting. No reverse logistics or credits.")
+        st.markdown("Baseline repeat orders are subject to the **Paid Reacquisition Trap** ($p_{\\text{paid-rep}} = 50\\%$), as half of repeats occur organically or via CRM:")
         st.latex(r"N_{\text{base}} = f_{\text{base}} \times \left(\frac{T_{\text{active}}}{12}\right)")
-        st.latex(r"\text{LTC}_{\text{baseline}} = -\text{CAC}_{\text{init}} + N_{\text{base}} \times (\text{AOV} \times \text{GM} - C_{\text{fulfill}}) - (N_{\text{base}} - 1) \times \text{CAC}_{\text{repeat}}")
-        st.info(f"**Current System A Live Output:** Orders = {res.n_orders_base:.2f} | LTC = **₹{res.ltc_baseline:,.2f}** | LTV/CAC = **{res.ltv_cac_baseline:.2f}x**")
+        st.latex(r"\text{CM}_{\text{order}} = \text{AOV} \times \text{GM}_{\text{prod}} - C_{\text{fulfill}}")
+        st.latex(r"\text{LTC}_{\text{baseline}} = -\text{CAC}_{\text{init}} + N_{\text{base}} \times \text{CM}_{\text{order}} - (N_{\text{base}} - 1) \times \text{CAC}_{\text{rep}} \times p_{\text{paid-rep}}")
+        st.info(f"**System A Live Output:** Orders = {res.n_orders_base:.2f} | LTC = **₹{res.ltc_baseline:,.2f}** | LTV/CAC = **{res.ltv_cac_baseline:.2f}x**")
 
-    with st.expander("System B: TradeBack Closed-Loop Buy-Back Equations", expanded=True):
-        st.markdown("#### A. Order Accounting & Return Frequency Decomposition")
+    with st.expander("System B: TradeBack 2-Lever Canonical Architecture", expanded=True):
+        st.markdown("#### A. The Canonical Master Equation")
+        st.latex(r"\Delta \text{LTC}_{\text{adopter}} = \underbrace{\Delta N_{\text{orders}} \times \text{CM}_{\text{order}}}_{\text{1. Incremental Volume Margin}} + \underbrace{N_{\text{TB}} \times \Big( E[R_{\text{net-ops}}] + E[\text{CAC}_{\text{avoided}}] - C_{\text{TB}} \Big)}_{\text{2. Net Unit Circular Balance}}")
+        
+        st.markdown("#### B. Mathematical Component Definitions")
         st.markdown("""
-        In a 4.50-order lifecycle ($N_{\\text{adopter}} = 4.50$), there are $N_{\\text{adopter}} - 1 = 3.50$ repeat order opportunities:
-        * **Terminal Stranded Garment ($N_{\\text{stranded}} = 1.0$):** The final garment bought before the customer churns remains stranded in their wardrobe (no subsequent order to redeem against).
-        * **Return Expiration / Window Dropout (~1.0 order):** Repeat purchases occurring outside the eligible 3–6 month return window or where the customer keeps the item yield no return.
-        * **Eligible TradeBack Returns:** $N_{\\text{returns}} = \\max\\left(0, \\; N_{\\text{adopter}} - 1 - N_{\\text{stranded}}\\right) = 4.50 - 1 - 1 = \\mathbf{2.50} \\text{ returns}$.
-        * **Full-Margin Orders:** $N_{\\text{full-margin}} = N_{\\text{adopter}} - N_{\\text{returns}} = 4.50 - 2.50 = \\mathbf{2.00} \\text{ orders}$ (earn full gross margin without store credit discount).
+        * **Incremental Orders ($\\Delta N_{\\text{orders}}$):** $\\Delta f \\times (T_{\\text{active}} / 12) = 0.50 \\times 1.5 = \\mathbf{+0.75 \\text{ orders}}$.
+        * **Order Contribution Margin ($\\text{CM}_{\\text{order}}$):** $(\\text{AOV} \\times \\text{GM}) - C_{\\text{fulfill}} = (1,300 \\times 0.50) - 70 = \\mathbf{₹580.00}$.
+        * **Actual Returns per Adopter ($N_{\\text{TB}}$):** Disentangles Customer Adoption ($\\alpha = 40\\%$) from Order Utilization ($u = 75\\%$):
+          $$N_{\\text{TB}} = (N_{\\text{adopter}} - 1 - N_{\\text{stranded}}) \\times u = (4.50 - 1 - 1) \\times 0.75 = \\mathbf{1.875 \\text{ returns}}$$
+        * **Avoided Ad Spend per Return ($E[\\text{CAC}_{\\text{avoided}}]$):** Incorporates $p_{\\text{paid-rep}} = 50\\%$ and $S_{\\text{ad}} = 60\\%$:
+          $$E[\\text{CAC}_{\\text{avoided}}] = \\text{CAC}_{\\text{rep}} \\times S_{\\text{ad}} \\times p_{\\text{paid-rep}} = 150 \\times 0.60 \\times 0.50 = \\mathbf{₹45.00 / return}$$
+        * **TradeBack Credit Cost ($C_{\\text{TB}}$):** $\\text{AOV} \\times \\text{Credit}_{\\%} = 1,300 \\times 0.20 = \\mathbf{₹260.00 / return}$.
+        * **Circular Unit Spread:** $E[R_{\\text{net-ops}}] + E[\\text{CAC}_{\\text{avoided}}] - C_{\\text{TB}} = 66.98 + 45.00 - 260.00 = \\mathbf{-₹148.02 / return}$.
         """)
-        st.latex(r"N_{\text{adopter}} = (f_{\text{base}} + \Delta f_{\text{causal}}) \times \left(\frac{T_{\text{active}}}{12}\right)")
-        st.latex(r"N_{\text{returns}} = \max\left(0, \; N_{\text{adopter}} - 1 - N_{\text{stranded}}\right)")
-        st.latex(r"N_{\text{full-margin}} = N_{\text{adopter}} - N_{\text{returns}}")
-
-        st.markdown("#### B. Blended Reverse Logistics Cascade ($C_{\\text{collection}}$)")
-        st.markdown("Doorstep swap fails at rate $P_{\\text{fail}}$, cascading into standalone courier or forward RTO freight penalty:")
-        st.latex(r"C_{\text{collection}} = C_{\text{swap}} + P_{\text{fail}} \times \left[ C_{\text{standalone-rev}} + P_{\text{RTO}} \times (C_{\text{forward}} + C_{\text{RTO-freight}}) \right]")
-        st.write(f"👉 **Current Blended Collection Cost:** **₹{res.blended_collection_cost:.2f} / return** (Base swap: ₹{custom_params['doorstep_swap_cost']:.0f}, Failure rate: {custom_params['swap_failure_rate']*100:.0f}%, RTO penalty: {custom_params['swap_fail_rto_rate']*100:.0f}%)")
-
-        st.markdown("#### C. Expected Net Garment Salvage Recovery ($E[R_{\\text{net}}]$)")
-        st.latex(r"E[R_{\text{net}}] = \sum_{k} P_k \times \left( V_k \times (1 - d_{\text{trend}})^{\frac{t_{\text{hold}}}{30}} - C_{\text{route-}k} \right) - C_{\text{collection}} - C_{\text{QC}} - \text{Tax}_{\text{GST}}")
-        st.write(f"👉 **Current Realized Net Salvage Recovery:** **₹{res.unit_net_salvage_recovery:.2f} / returned garment** (B2B jobber gross: ₹{custom_params['b2b_gross_price']:.0f}, QC: ₹{custom_params['qc_inspection_cost']:.0f})")
-
-        st.markdown("#### D. Adopter Lifetime Contribution ($\\text{LTC}_{\\text{adopter}}$)")
-        st.markdown("*Avoided Marketing Formula Reconciled:* Repeat ad spend is charged across all $(N_{\\text{adopter}} - 1)$ repeat orders, with savings $S_{\\text{ad}} = 80\\%$ applied strictly to the $N_{\\text{returns}}$ orders triggered via TradeBack:")
-        st.latex(r"\text{LTC}_{\text{adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) + N_{\text{returns}} E[R_{\text{net}}] - N_{\text{returns}} (\text{AOV} \cdot \text{Credit}_{\text{pct}}) - N_{\text{returns}} P_{\text{D2C}} \theta_{\text{cannibal}} (\text{AOV} \cdot \text{GM}) - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} + N_{\text{returns}} (\text{CAC}_{\text{repeat}} \cdot S_{\text{ad}})")
-        st.write(f"👉 **Current Adopter LTC:** **₹{res.ltc_adopter:,.2f}** (vs Baseline: ₹{res.ltc_baseline:,.2f})")
-
-        st.markdown("#### E. Partitioned Cohort Blended Economics (Zero Breakage $\\beta = 0\%$)")
-        st.latex(r"\text{Cohort LTC} = \alpha \times \text{LTC}_{\text{adopter}} + (1 - \alpha) \times \text{LTC}_{\text{baseline}}")
-        st.latex(r"\Delta \text{Contribution}_{\text{TradeBack}} = \alpha \times (\text{LTC}_{\text{adopter}} - \text{LTC}_{\text{baseline}})")
-        st.info(f"**Current Cohort Live Calculation (Adoption $\\alpha = {custom_params['tradeback_adoption_rate']*100:.0f}\%$):** Cohort LTC = **₹{res.ltc_cohort_tradeback:,.2f}** | Net Accretion = **+₹{res.delta_contribution_tradeback:,.2f} / acquired customer**")
+        
+        st.markdown("#### C. Live 2-Lever Accretion Calculation")
+        st.markdown(f"""
+        * **Lever 1 (Incremental Volume Margin):** ${res.delta_n_orders:.2f} \\times ₹{res.cm_order:.2f} = \\mathbf{{+₹{res.incremental_volume_margin:,.2f}}}$
+        * **Lever 2 (Net Unit Circular Balance):** ${res.n_returns_adopter:.3f} \\times ₹{res.circular_unit_spread:.2f} = \\mathbf{{₹{res.net_unit_circular_balance:,.2f}}}$
+        * **Incremental Adopter LTC ($\\Delta \\text{{LTC}}_{{\\text{{adopter}}}}$):** $₹{res.incremental_volume_margin:.2f} - ₹{abs(res.net_unit_circular_balance):.2f} = \\mathbf{{+₹{res.delta_ltc_adopter:,.2f}}}$
+        * **Blended Cohort Accretion ($\\alpha = {custom_params['tradeback_adoption_rate']*100:.0f}\\%$):** ${custom_params['tradeback_adoption_rate']:.2f} \\times ₹{res.delta_ltc_adopter:.2f} = \\mathbf{{+₹{res.delta_contribution_tradeback:,.2f} \\text{{ / acquired customer}}}}$
+        """)
+        st.info(f"**System B Live Output:** Cohort LTC = **₹{res.ltc_cohort_tradeback:,.2f}** (Adopter: ₹{res.ltc_adopter:,.2f}) | Accretion vs Baseline: **+₹{res.delta_contribution_tradeback:,.2f} / customer**")
 
     with st.expander("System C: Benchmark Promotional Coupon Equations", expanded=True):
-        st.markdown("Simulates an aggressive loyalty discount benchmark evaluated on the same 40% cohort adoption basis ($\\alpha = 0.40$):")
-        st.latex(r"\text{LTC}_{\text{promo-adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) - (N_{\text{adopter}} - 1) \text{Discount}_{\text{coupon}} - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} (1 - S_{\text{ad}})")
-        st.latex(r"\text{Cohort LTC}_{\text{promo}} = \alpha \times \text{LTC}_{\text{promo-adopter}} + (1 - \alpha) \times \text{LTC}_{\text{baseline}}")
-        st.latex(r"\Delta \text{Contribution}_{\text{Promo}} = \text{Cohort LTC}_{\text{promo}} - \text{LTC}_{\text{baseline}}")
-        st.latex(r"\text{TradeBack Superiority} = \text{Cohort LTC}_{\text{TradeBack}} - \text{Cohort LTC}_{\text{promo}}")
-        st.info(f"**Current System C Live Output:** Promo Adopter LTC = **₹1,405.00** | Cohort Blended LTC = **₹{res.ltc_benchmark_promo:,.2f}** | TradeBack Superiority vs Promo = **{'+' if res.tradeback_vs_promo_delta>=0 else ''}₹{res.tradeback_vs_promo_delta:,.2f} / customer**")
+        st.markdown("Benchmarking against a standard instant digital discount voucher without reverse logistics:")
+        st.latex(r"\Delta \text{LTC}_{\text{promo-adopter}} = (\Delta N_{\text{orders}} \times \text{CM}_{\text{order}}) - (N_{\text{repeats}} \times \text{Discount}_{\text{coupon}}) + (N_{\text{repeats}} \times E[\text{CAC}_{\text{avoided}}])")
+        st.latex(r"\text{Cohort LTC}_{\text{promo}} = \text{LTC}_{\text{baseline}} + \alpha \times \Delta \text{LTC}_{\text{promo-adopter}}")
+        st.latex(r"\text{TradeBack Advantage} = \Delta \text{LTC}_{\text{cohort, TradeBack}} - \Delta \text{LTC}_{\text{cohort, Promo}}")
+        st.info(f"**System C Live Output:** Promo Blended LTC = **₹{res.ltc_benchmark_promo:,.2f}** (ΔLTC: ₹{res.delta_contribution_promo:,.2f}) | TradeBack Advantage vs Promo = **+₹{res.tradeback_vs_promo_delta:,.2f} / customer**")
 
-    # 3. 5 Deal-Breaker Investor Thresholds
+    # 4. 5 Deal-Breaker Investor Thresholds
     st.markdown("---")
-    st.markdown("### 3. The 5 Deal-Breaker Investor Threshold Formulas")
+    st.markdown("### 4. The 5 Deal-Breaker Investor Threshold Formulas")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
         st.markdown(f"""
-        * **1. Minimum Net Recovery Required ($E[R_{{\\text{{net}}}}]$ at $\\Delta f = 0$):**  
-          $$\\text{{Break-Even Recovery}} = \\text{{Credit}} - \\text{{Ad Savings}} = ₹{custom_params['aov']*custom_params['tradeback_credit_pct']:.0f} - ₹{custom_params['repeat_ad_cac']*custom_params['ad_spend_reduction_tradeback']:.0f}$$  
+        * **1. Zero-Uplift Required Recovery ($E[R_{{\\text{{net-ops}}}}]$ at $\\Delta f = 0$):**  
+          $$E[R_{{\\text{{net-ops}}}}] \\ge C_{{\\text{{TB}}}} - E[\\text{{CAC}}_{{\\text{{avoided}}}}] = ₹{custom_params['aov']*custom_params['tradeback_credit_pct']:.0f} - ₹{res.cac_avoided:.0f}$$  
           👉 **₹{q_ans['Q1_min_net_recovery_at_20pct_credit']:.2f} / return** (Current realized: ₹{res.unit_net_salvage_recovery:.2f}).
-
-        * **2. Minimum Causal Frequency Uplift ($\Delta f_{{\\text{{causal}}}}$ at $E[R] = ₹0$):**  
-          $$\\Delta f_{{\\text{{min}}}} = \\frac{{N_{{\\text{{returns}}}} \\times (\\text{{Credit}} - \\text{{Ad Savings}})}}{{(T_{{\\text{{active}}}}/12) \\times (\\text{{AOV}} \\cdot \\text{{GM}} - C_{{\\text{{fulfill}}}} - \\text{{CAC}}_{{\\text{{repeat}}}})}}$$  
-          👉 **+{q_ans['Q2_req_freq_uplift_if_recovery_250']:.2f} orders/year** required if net salvage recovery is zero.
-
+        
+        * **2. Zero-Recovery Required Uplift ($\Delta f$ at $E[R] = ₹0$):**  
+          $$\\Delta N_{{\\text{{orders}}}} \\ge \\frac{{N_{{\\text{{TB}}}} \\times (C_{{\\text{{TB}}}} - E[\\text{{CAC}}_{{\\text{{avoided}}}}])}}{{\\text{{CM}}_{{\\text{{order}}}}}} = \\frac{{{res.n_returns_adopter:.3f} \\times ₹215}}{{₹{res.cm_order:.0f}}} \\approx 0.695 \\text{{ orders}}$$  
+          👉 **+{q_ans['Q2_req_freq_uplift_if_recovery_250']:.2f} orders/year** (+0.46 orders/yr required if garment salvage drops to ₹0).
+        
         * **3. Maximum Affordable Credit % Ceiling:**  
-          $$\\text{{Credit}}_{{\\text{{max}}}} = \\frac{{\\text{{Contribution Margin}} + E[R_{{\\text{{net}}}}] + \\text{{Ad Savings}}}}{{\\text{{AOV}}}}$$  
-          👉 **{q_ans['Q5_max_affordable_credit_pct']:.1f}% of AOV** (₹{custom_params['aov']*q_ans['Q5_max_affordable_credit_pct']/100:.0f}). Exceeding this destroys replacement gross margins!
+          $$\\text{{Credit}}_{{\\text{{max}}}} = \\frac{{E[R_{{\\text{{net-ops}}}}] + E[\\text{{CAC}}_{{\\text{{avoided}}}}] + \\frac{{\\Delta N \\times \\text{{CM}}}}{{N_{{\\text{{TB}}}}}}}}{{\\text{{AOV}}}} = \\frac{{₹66.98 + ₹45.00 + ₹232.00}}{{₹1,300}}$$  
+          👉 **{q_ans['Q5_max_affordable_credit_pct']:.1f}% of AOV** (₹{custom_params['aov']*q_ans['Q5_max_affordable_credit_pct']/100:.0f}). Exceeding this destroys replacement margin!
         """)
     with col_t2:
         st.markdown(f"""
         * **4. Maximum Tolerable QC & Sanitization Cost ($C_{{\\text{{QC, max}}}}$):**  
-          $$C_{{\\text{{QC, max}}}} = C_{{\\text{{QC, current}}}} + (\\text{{LTC}}_{{\\text{{adopter}}}} - \\text{{LTC}}_{{\\text{{baseline}}}})/N_{{\\text{{returns}}}}$$  
+          $$C_{{\\text{{QC, max}}}} = C_{{\\text{{QC, base}}}} + \\frac{{\\Delta \\text{{LTC}}_{{\\text{{adopter}}}}}}{{N_{{\\text{{TB}}}}}} = 45.00 + \\frac{{₹157.46}}{{1.875}}$$  
           👉 **₹{q_ans['Q7_max_tolerable_qc_cost']:.2f} / garment** (Current: ₹{custom_params['qc_inspection_cost']:.2f}).
-
+        
         * **5. TradeBack vs Promo Coupon Superiority Threshold:**  
-          $$\\text{{TradeBack is Accretive vs Promo}} \\iff E[R_{{\\text{{net}}}}] \\ge \\text{{Credit}} - \\text{{Discount}}_{{\\text{{promo}}}} - (S_{{\\text{{ad, TradeBack}}}} - S_{{\\text{{ad, Promo}}}}) \\text{{CAC}}_{{\\text{{repeat}}}}$$  
-          👉 Current Advantage: **+₹{q_ans['Q10_tradeback_vs_coupon_superiority']:.2f} / customer**. TradeBack remains superior as long as net salvage $\\ge$ **₹45.00 / garment**.
+          $$\\text{{TradeBack Advantage}} = \\Delta \\text{{Contribution}}_{{\\text{{TradeBack}}}} - \\Delta \\text{{Contribution}}_{{\\text{{Promo}}}}$$  
+          👉 Current Advantage: **+₹{q_ans['Q10_tradeback_vs_coupon_superiority']:.2f} / customer**. TradeBack remains superior as long as net secondary salvage $\\ge$ **₹45.00 / garment**.
         """)
 
 # --- TAB 6: ASSUMPTIONS & TAXONOMY ---

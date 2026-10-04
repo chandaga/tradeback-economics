@@ -8,6 +8,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from src.assumptions import get_default_assumptions
+from src.tier0_engine import calculate_tier0_economics
 from src.tier1_breakeven import (
     solve_breakeven_recovery,
     solve_breakeven_delta_f,
@@ -20,6 +21,7 @@ from src.tier1_breakeven import (
 
 def test_tier1_solver():
     defaults = get_default_assumptions()
+    res = calculate_tier0_economics(defaults)
     
     print("\n" + "="*85)
     print("             TIER 1 BREAK-EVEN SURFACE & STRATEGIC SENSITIVITY REPORT")
@@ -36,7 +38,7 @@ def test_tier1_solver():
     print(f"2. Min Causal Uplift Required if Recovery = ₹0.0   : +{min_uplift_zero_rec:.2f} orders/year")
     print(f"3. Maximum Economically Affordable Credit %         : {max_credit*100:.1f}% of AOV (₹{defaults['aov']*max_credit:.1f})")
     print(f"4. Maximum Tolerable QC & Sanitization Cost         : ₹{max_qc:.2f} / garment")
-    print(f"5. Current Net Accretion at Base Operating Point    : +₹35.50 / acquired customer")
+    print(f"5. Current Net Accretion at Base Operating Point    : +₹{res.delta_contribution_tradeback:.2f} / acquired customer")
     
     # 2. 2D Break-Even Isocline
     print("\n--- 2. 2D BREAK-EVEN ISOCLINE (Δf_causal vs. Required Net Recovery E[R_net]) ---")
@@ -76,6 +78,13 @@ def test_tier1_solver():
     print(f"Q8 (Retention sensitivity)                    : {q_ans['Q8_retention_sensitivity']}")
     print(f"Q10 (TradeBack superiority vs. ₹200 Coupon)   : +₹{q_ans['Q10_tradeback_vs_coupon_superiority']:.2f} / customer")
     print("="*85 + "\n")
+
+    # Assertions
+    assert round(min_rec_zero_uplift, 2) == 215.00, f"Expected 215.00, got {min_rec_zero_uplift}"
+    assert round(min_uplift_zero_rec, 2) in (0.45, 0.46), f"Expected 0.45 or 0.46, got {min_uplift_zero_rec}"
+    assert round(max_credit * 100, 1) == 26.5, f"Expected 26.5, got {max_credit*100}"
+    assert round(max_qc, 2) == 128.98, f"Expected 128.98, got {max_qc}"
+    print("ALL TIER 1 CANONICAL ASSERTIONS PASSED!")
 
 if __name__ == "__main__":
     test_tier1_solver()
