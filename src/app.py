@@ -684,25 +684,25 @@ with tab5:
         In a 4.50-order lifecycle ($N_{\\text{adopter}} = 4.50$), there are $N_{\\text{adopter}} - 1 = 3.50$ repeat order opportunities:
         * **Terminal Stranded Garment ($N_{\\text{stranded}} = 1.0$):** The final garment bought before the customer churns remains stranded in their wardrobe (no subsequent order to redeem against).
         * **Return Expiration / Window Dropout (~1.0 order):** Repeat purchases occurring outside the eligible 3–6 month return window or where the customer keeps the item yield no return.
-        * **Eligible TradeBack Returns:** $N_{\\text{returns}} = \\max\\left(0, \\; N_{\\text{adopter}} - 1 - N_{\\text{stranded}}\\right) = 4.50 - 1 - 1 = \\mathbf{2.50 \\text{ returns}}$.
-        * **Full-Margin Orders:** $N_{\\text{full\\_margin}} = N_{\\text{adopter}} - N_{\\text{returns}} = 4.50 - 2.50 = \\mathbf{2.00 \\text{ orders}}$ (earn full gross margin without store credit discount).
+        * **Eligible TradeBack Returns:** $N_{\\text{returns}} = \\max\\left(0, \\; N_{\\text{adopter}} - 1 - N_{\\text{stranded}}\\right) = 4.50 - 1 - 1 = \\mathbf{2.50} \\text{ returns}$.
+        * **Full-Margin Orders:** $N_{\\text{full-margin}} = N_{\\text{adopter}} - N_{\\text{returns}} = 4.50 - 2.50 = \\mathbf{2.00} \\text{ orders}$ (earn full gross margin without store credit discount).
         """)
         st.latex(r"N_{\text{adopter}} = (f_{\text{base}} + \Delta f_{\text{causal}}) \times \left(\frac{T_{\text{active}}}{12}\right)")
         st.latex(r"N_{\text{returns}} = \max\left(0, \; N_{\text{adopter}} - 1 - N_{\text{stranded}}\right)")
-        st.latex(r"N_{\text{full\_margin\_orders}} = N_{\text{adopter}} - N_{\text{returns}}")
+        st.latex(r"N_{\text{full-margin}} = N_{\text{adopter}} - N_{\text{returns}}")
 
         st.markdown("#### B. Blended Reverse Logistics Cascade ($C_{\\text{collection}}$)")
         st.markdown("Doorstep swap fails at rate $P_{\\text{fail}}$, cascading into standalone courier or forward RTO freight penalty:")
-        st.latex(r"C_{\text{collection}} = C_{\text{swap}} + P_{\text{fail}} \times \left[ C_{\text{standalone\_rev}} + P_{\text{RTO}} \times (C_{\text{forward}} + C_{\text{RTO\_freight}}) \right]")
+        st.latex(r"C_{\text{collection}} = C_{\text{swap}} + P_{\text{fail}} \times \left[ C_{\text{standalone-rev}} + P_{\text{RTO}} \times (C_{\text{forward}} + C_{\text{RTO-freight}}) \right]")
         st.write(f"👉 **Current Blended Collection Cost:** **₹{res.blended_collection_cost:.2f} / return** (Base swap: ₹{custom_params['doorstep_swap_cost']:.0f}, Failure rate: {custom_params['swap_failure_rate']*100:.0f}%, RTO penalty: {custom_params['swap_fail_rto_rate']*100:.0f}%)")
 
         st.markdown("#### C. Expected Net Garment Salvage Recovery ($E[R_{\\text{net}}]$)")
-        st.latex(r"E[R_{\text{net}}] = \sum_{k} P_k \times \left( V_k \times (1 - d_{\text{trend}})^{\frac{t_{\text{hold}}}{30}} - C_{\text{route\_}k} \right) - C_{\text{collection}} - C_{\text{QC}} - \text{Tax}_{\text{GST}}")
+        st.latex(r"E[R_{\text{net}}] = \sum_{k} P_k \times \left( V_k \times (1 - d_{\text{trend}})^{\frac{t_{\text{hold}}}{30}} - C_{\text{route-}k} \right) - C_{\text{collection}} - C_{\text{QC}} - \text{Tax}_{\text{GST}}")
         st.write(f"👉 **Current Realized Net Salvage Recovery:** **₹{res.unit_net_salvage_recovery:.2f} / returned garment** (B2B jobber gross: ₹{custom_params['b2b_gross_price']:.0f}, QC: ₹{custom_params['qc_inspection_cost']:.0f})")
 
         st.markdown("#### D. Adopter Lifetime Contribution ($\\text{LTC}_{\\text{adopter}}$)")
         st.markdown("*Avoided Marketing Formula Reconciled:* Repeat ad spend is charged across all $(N_{\\text{adopter}} - 1)$ repeat orders, with savings $S_{\\text{ad}} = 80\\%$ applied strictly to the $N_{\\text{returns}}$ orders triggered via TradeBack:")
-        st.latex(r"\text{LTC}_{\text{adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) + N_{\text{returns}} E[R_{\text{net}}] - N_{\text{returns}} (\text{AOV} \cdot \text{Credit}_{\%}) - N_{\text{returns}} P_{\text{D2C}} \theta_{\text{cannibal}} (\text{AOV} \cdot \text{GM}) - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} + N_{\text{returns}} (\text{CAC}_{\text{repeat}} \cdot S_{\text{ad}})")
+        st.latex(r"\text{LTC}_{\text{adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) + N_{\text{returns}} E[R_{\text{net}}] - N_{\text{returns}} (\text{AOV} \cdot \text{Credit}_{\text{pct}}) - N_{\text{returns}} P_{\text{D2C}} \theta_{\text{cannibal}} (\text{AOV} \cdot \text{GM}) - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} + N_{\text{returns}} (\text{CAC}_{\text{repeat}} \cdot S_{\text{ad}})")
         st.write(f"👉 **Current Adopter LTC:** **₹{res.ltc_adopter:,.2f}** (vs Baseline: ₹{res.ltc_baseline:,.2f})")
 
         st.markdown("#### E. Partitioned Cohort Blended Economics (Zero Breakage $\\beta = 0\%$)")
@@ -712,8 +712,8 @@ with tab5:
 
     with st.expander("System C: Benchmark Promotional Coupon Equations", expanded=True):
         st.markdown("Simulates an aggressive loyalty discount benchmark evaluated on the same 40% cohort adoption basis ($\\alpha = 0.40$):")
-        st.latex(r"\text{LTC}_{\text{promo\_adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) - (N_{\text{adopter}} - 1) \text{Discount}_{\text{coupon}} - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} (1 - S_{\text{ad}})")
-        st.latex(r"\text{Cohort LTC}_{\text{promo}} = \alpha \times \text{LTC}_{\text{promo\_adopter}} + (1 - \alpha) \times \text{LTC}_{\text{baseline}}")
+        st.latex(r"\text{LTC}_{\text{promo-adopter}} = -\text{CAC}_{\text{init}} + N_{\text{adopter}} (\text{AOV} \cdot \text{GM} - C_{\text{fulfill}}) - (N_{\text{adopter}} - 1) \text{Discount}_{\text{coupon}} - (N_{\text{adopter}} - 1) \text{CAC}_{\text{repeat}} (1 - S_{\text{ad}})")
+        st.latex(r"\text{Cohort LTC}_{\text{promo}} = \alpha \times \text{LTC}_{\text{promo-adopter}} + (1 - \alpha) \times \text{LTC}_{\text{baseline}}")
         st.latex(r"\Delta \text{Contribution}_{\text{Promo}} = \text{Cohort LTC}_{\text{promo}} - \text{LTC}_{\text{baseline}}")
         st.latex(r"\text{TradeBack Superiority} = \text{Cohort LTC}_{\text{TradeBack}} - \text{Cohort LTC}_{\text{promo}}")
         st.info(f"**Current System C Live Output:** Promo Adopter LTC = **₹1,405.00** | Cohort Blended LTC = **₹{res.ltc_benchmark_promo:,.2f}** | TradeBack Superiority vs Promo = **{'+' if res.tradeback_vs_promo_delta>=0 else ''}₹{res.tradeback_vs_promo_delta:,.2f} / customer**")
@@ -733,7 +733,7 @@ with tab5:
           👉 **+{q_ans['Q2_req_freq_uplift_if_recovery_250']:.2f} orders/year** required if net salvage recovery is zero.
 
         * **3. Maximum Affordable Credit % Ceiling:**  
-          $$\\text{{Credit}}_{{\\%\\text{{, max}}}} = \\frac{{\\text{{Contribution Margin}} + E[R_{{\\text{{net}}}}] + \\text{{Ad Savings}}}}{{\\text{{AOV}}}}$$  
+          $$\\text{{Credit}}_{{\\text{{max}}}} = \\frac{{\\text{{Contribution Margin}} + E[R_{{\\text{{net}}}}] + \\text{{Ad Savings}}}}{{\\text{{AOV}}}}$$  
           👉 **{q_ans['Q5_max_affordable_credit_pct']:.1f}% of AOV** (₹{custom_params['aov']*q_ans['Q5_max_affordable_credit_pct']/100:.0f}). Exceeding this destroys replacement gross margins!
         """)
     with col_t2:
@@ -743,7 +743,7 @@ with tab5:
           👉 **₹{q_ans['Q7_max_tolerable_qc_cost']:.2f} / garment** (Current: ₹{custom_params['qc_inspection_cost']:.2f}).
 
         * **5. TradeBack vs Promo Coupon Superiority Threshold:**  
-          $$\\text{{TradeBack is Accretive vs Promo}} \\iff E[R_{{\\text{{net}}}}] \\ge \\text{{Credit}} - \\text{{Discount}}_{{\\text{{promo}}}} - (S_{{\\text{{ad, TB}}}} - S_{{\\text{{ad, promo}}}}) \\text{{CAC}}_{{\\text{{repeat}}}}$$  
+          $$\\text{{TradeBack is Accretive vs Promo}} \\iff E[R_{{\\text{{net}}}}] \\ge \\text{{Credit}} - \\text{{Discount}}_{{\\text{{promo}}}} - (S_{{\\text{{ad, TradeBack}}}} - S_{{\\text{{ad, Promo}}}}) \\text{{CAC}}_{{\\text{{repeat}}}}$$  
           👉 Current Advantage: **+₹{q_ans['Q10_tradeback_vs_coupon_superiority']:.2f} / customer**. TradeBack remains superior as long as net salvage $\\ge$ **₹45.00 / garment**.
         """)
 

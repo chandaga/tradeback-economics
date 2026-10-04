@@ -25,7 +25,7 @@
 ### System A: Conventional D2C Baseline
 Every repeat order requires paid performance marketing retargeting. No reverse logistics or credits.
 
-$$\text{Total Orders } (N_{\text{base}}) = f_{\text{base}} \times \left(\frac{T_{\text{active}}}{12}\right) = 2.50 \times 1.5 = \mathbf{3.75 \text{ orders}}$$
+$$\text{Total Orders } (N_{\text{base}}) = f_{\text{base}} \times \left(\frac{T_{\text{active}}}{12}\right) = 2.50 \times 1.5 = \mathbf{3.75} \text{ orders}$$
 
 $$\text{LTC}_{\text{baseline}} = -\text{CAC}_{\text{init}} + N_{\text{base}} \times (\text{AOV} \times \text{GM} - C_{\text{fulfill}}) - (N_{\text{base}} - 1) \times \text{CAC}_{\text{repeat}}$$
 
@@ -41,18 +41,18 @@ Customers opt-in at rate $\alpha = 40\%$. Adopters generate causal purchase upli
 In a 4.50-order lifecycle ($N_{\text{adopter}} = (2.50 + 0.50) \times 1.5 = 4.50$), there are $N_{\text{adopter}} - 1 = 3.50$ repeat order opportunities:
 * **Terminal Stranded Garment ($N_{\text{stranded}} = 1.0$):** The final garment bought before the customer churns remains stranded in their wardrobe (no subsequent order to redeem against).
 * **Return Expiration / Window Dropout (~1.0 order):** Repeat purchases occurring outside the eligible 3–6 month return window or where the customer chooses to keep the item yield no return.
-* **Eligible TradeBack Returns:** $N_{\text{returns}} = \max\left(0, \; N_{\text{adopter}} - 1 - N_{\text{stranded}}\right) = 4.50 - 1 - 1 = \mathbf{2.50 \text{ returns}}$.
-* **Full-Margin Orders:** $N_{\text{full\_margin}} = N_{\text{adopter}} - N_{\text{returns}} = 4.50 - 2.50 = \mathbf{2.00 \text{ orders}}$ (earn full gross margin without store credit discount).
+* **Eligible TradeBack Returns:** $N_{\text{returns}} = \max\left(0, \; N_{\text{adopter}} - 1 - N_{\text{stranded}}\right) = 4.50 - 1 - 1 = \mathbf{2.50} \text{ returns}$.
+* **Full-Margin Orders:** $N_{\text{full-margin}} = N_{\text{adopter}} - N_{\text{returns}} = 4.50 - 2.50 = \mathbf{2.00} \text{ orders}$ (earn full gross margin without store credit discount).
 
 #### 2. Reverse Logistics & Cascading Collection Cost ($C_{\text{collection}}$)
 Doorstep swap fails at rate $P_{\text{fail}}$, cascading into standalone courier or forward RTO freight penalty:
 
-$$C_{\text{collection}} = C_{\text{swap}} + P_{\text{fail}} \times \left[ C_{\text{standalone\_rev}} + P_{\text{RTO}} \times (C_{\text{forward}} + C_{\text{RTO\_freight}}) \right]$$
+$$C_{\text{collection}} = C_{\text{swap}} + P_{\text{fail}} \times \left[ C_{\text{standalone-rev}} + P_{\text{RTO}} \times (C_{\text{forward}} + C_{\text{RTO-freight}}) \right]$$
 
 $$C_{\text{collection}} = 35 + 0.15 \times \left[ 65 + 0.10 \times (70 + 60) \right] = 35 + 0.15 \times [65 + 13] = 35 + 11.70 = \mathbf{₹46.70 / return}$$
 
 #### 3. Expected Unit Net Salvage Recovery ($E[R_{\text{net}}]$)
-$$E[R_{\text{net}}] = \sum_{k} P_k \times \left( V_k \times (1 - d_{\text{trend}})^{\frac{t_{\text{hold}}}{30}} - C_{\text{route\_}k} \right) - C_{\text{collection}} - C_{\text{QC}} - \text{Tax}_{\text{GST}} = \mathbf{₹72.50 / garment}$$
+$$E[R_{\text{net}}] = \sum_{k} P_k \times \left( V_k \times (1 - d_{\text{trend}})^{\frac{t_{\text{hold}}}{30}} - C_{\text{route-}k} \right) - C_{\text{collection}} - C_{\text{QC}} - \text{Tax}_{\text{GST}} = \mathbf{₹72.50 / garment}$$
 
 #### 4. Adopter Lifetime Contribution ($\text{LTC}_{\text{adopter}}$)
 *Avoided Marketing Bug Fixed:* Repeat ad spend is charged across all $(N_{\text{adopter}} - 1)$ repeat orders, with savings $S_{\text{ad}} = 80\%$ applied strictly to the $N_{\text{returns}}$ orders triggered via TradeBack:
@@ -61,7 +61,7 @@ $$\begin{aligned}
 \text{LTC}_{\text{adopter}} = & -\text{CAC}_{\text{init}} \\
 & + N_{\text{adopter}} \times (\text{AOV} \times \text{GM} - C_{\text{fulfill}}) \\
 & + N_{\text{returns}} \times E[R_{\text{net}}] \\
-& - N_{\text{returns}} \times (\text{AOV} \times \text{Credit}_{\%}) \\
+& - N_{\text{returns}} \times (\text{AOV} \times \text{Credit}_{\text{pct}}) \\
 & - N_{\text{returns}} \times P_{\text{D2C}} \times \theta_{\text{cannibal}} \times (\text{AOV} \times \text{GM}) \\
 & - (N_{\text{adopter}} - 1) \times \text{CAC}_{\text{repeat}} + N_{\text{returns}} \times (\text{CAC}_{\text{repeat}} \times S_{\text{ad}})
 \end{aligned}$$
@@ -89,13 +89,13 @@ $$\Delta \text{Contribution}_{\text{TradeBack}} = \text{Cohort LTC}_{\text{Trade
 Simulates an aggressive loyalty discount benchmark evaluated on the same 40% cohort adoption basis ($\alpha = 0.40$):
 
 $$\begin{aligned}
-\text{LTC}_{\text{promo\_adopter}} = & -\text{CAC}_{\text{init}} + N_{\text{adopter}} \times (\text{AOV} \times \text{GM} - C_{\text{fulfill}}) \\
+\text{LTC}_{\text{promo-adopter}} = & -\text{CAC}_{\text{init}} + N_{\text{adopter}} \times (\text{AOV} \times \text{GM} - C_{\text{fulfill}}) \\
 & - (N_{\text{adopter}} - 1) \times \text{Discount}_{\text{coupon}} \\
 & - (N_{\text{adopter}} - 1) \times \text{CAC}_{\text{repeat}} \times (1 - S_{\text{ad}})
 \end{aligned}$$
 
 $$\begin{aligned}
-\text{LTC}_{\text{promo\_adopter}} = & -400 + 4.50 \times 580 - 3.50 \times 200 - 3.50 \times (150 \times 0.20) \\
+\text{LTC}_{\text{promo-adopter}} = & -400 + 4.50 \times 580 - 3.50 \times 200 - 3.50 \times (150 \times 0.20) \\
 = & -400 + 2,610.00 - 700.00 - 105.00 \\
 = & \mathbf{₹1,405.00}
 \end{aligned}$$
@@ -123,7 +123,7 @@ $$\text{TradeBack Superiority vs Promo} = \text{Cohort LTC}_{\text{TradeBack}} -
 | **Repeat Ad Savings %** | $S_{\text{ad}}$ | **80.0%** | % | Organic re-engagement savings on TradeBack / Promo orders |
 | **TradeBack Adoption Rate** | $\alpha$ | **40.0%** | % | Target cohort participation in buy-back |
 | **Causal Order Uplift** | $\Delta f_{\text{causal}}$ | **+0.50** | orders/yr | +0.75 incremental orders over 18 months ($N_{\text{adopter}} = 4.50$) |
-| **TradeBack Credit %** | $\text{Credit}_{\%}$ | **20.0%** | % of AOV | ₹260 store credit applied directly at checkout |
+| **TradeBack Credit %** | $\text{Credit}_{\text{pct}}$ | **20.0%** | % of AOV | ₹260 store credit applied directly at checkout |
 | **Credit Breakage Rate** | $\beta$ | **0.0%** | % | Instant checkout deduction (ADR-001: no phantom breakage) |
 | **Terminal Stranded Garments** | $N_{\text{stranded}}$ | **1.0** | units | Garments retained at customer lifecycle exit (ADR-002) |
 | **Fulfillment / Forward Ship** | $C_{\text{fulfill}}$ | **₹70** | ₹/order | Standard 3PL forward shipping + packaging (Delhivery) |
@@ -131,7 +131,7 @@ $$\text{TradeBack Superiority vs Promo} = \text{Cohort LTC}_{\text{TradeBack}} -
 | **Swap Failure Rate** | $P_{\text{fail}}$ | **15.0%** | % | Customer unprepared / courier SLA pressure (Shadowfax) |
 | **Standalone Reverse Pickup** | $C_{\text{rev}}$ | **₹65** | ₹/pickup | Fallback reverse courier cost upon swap failure |
 | **Swap Failure RTO Penalty Rate** | $P_{\text{RTO}}$ | **10.0%** | % | Failed swap parcels turning into full forward RTO |
-| **Wasted RTO Freight Burn** | $C_{\text{RTO\_burn}}$ | **₹130** | ₹/order | Wasted forward freight (₹70) + RTO reverse freight (₹60) |
+| **Wasted RTO Freight Burn** | $C_{\text{RTO-burn}}$ | **₹130** | ₹/order | Wasted forward freight (₹70) + RTO reverse freight (₹60) |
 | **QC & Sanitization Cost** | $C_{\text{QC}}$ | **₹45** | ₹/garment | Warehouse unboxing, grading, steam press, polybag |
 | **B2B Jobber Liquidation Price** | $V_{\text{B2B}}$ | **₹150** | ₹/garment | Bulk wholesale lot clearance price (Surat/Delhi hubs) |
 | **B2B Liquidation Allocation** | $P_{\text{B2B}}$ | **60.0%** | % | Primary disposition channel (ADR-004) |
