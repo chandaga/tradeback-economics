@@ -757,8 +757,44 @@ with tab5:
 
     with st.expander("System B: TradeBack 2-Lever Canonical Architecture", expanded=True):
         st.markdown("#### A. The Canonical Master Equation")
-        st.latex(r"\Delta \text{LTC}_{\text{adopter}} = \underbrace{\Delta N_{\text{orders}} \times \text{CM}_{\text{order}}}_{\text{1. Incremental Volume Margin}} + \underbrace{N_{\text{TB}} \times \Big( E[R_{\text{net-ops}}] + E[\text{CAC}_{\text{avoided}}] - C_{\text{TB}} \Big)}_{\text{2. Net Unit Circular Balance}}")
+        st.latex(r"\Delta \text{LTC}_{\text{adopter}} = \underbrace{\Delta N_{\text{orders}} \times \text{CM}_{\text{order}}}_{\text{Lever 1: Incremental Volume Margin}} + \underbrace{N_{\text{TB}} \times \left( E[R_{\text{net-ops}}] + E[\text{CAC}_{\text{avoided}}] - C_{\text{TB}} \right)}_{\text{Lever 2: Net Unit Circular Balance}}")
         
+        # Visual 2-Lever Explanation Containers
+        c_l1, c_l2 = st.columns(2)
+        with c_l1:
+            st.markdown(f"""
+            <div style="background: #eef9f0; padding: 14px; border-radius: 8px; border-left: 4px solid #2ca02c; margin-bottom: 12px;">
+                <h5 style="margin:0 0 6px 0; color: #1e7e34;">📈 Lever 1: Incremental Volume Margin</h5>
+                <p style="font-size: 13px; margin: 0 0 6px 0; color: #333;">
+                    <strong>Core Concept:</strong> New gross profit generated on orders that <em>would not exist</em> without TradeBack.
+                </p>
+                <div style="font-size: 16px; font-weight: bold; color: #155724;">
+                    +{res.delta_n_orders:.2f} orders × ₹{res.cm_order:.2f} CM = +₹{res.incremental_volume_margin:,.2f}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        with c_l2:
+            st.markdown(f"""
+            <div style="background: #fdf2f2; padding: 14px; border-radius: 8px; border-left: 4px solid #dc3545; margin-bottom: 12px;">
+                <h5 style="margin:0 0 6px 0; color: #bd2130;">🔄 Lever 2: Net Unit Circular Balance</h5>
+                <p style="font-size: 13px; margin: 0 0 6px 0; color: #333;">
+                    <strong>Core Concept:</strong> The net cost per returned garment (Salvage Cash + Avoided CAC − Store Credit).
+                </p>
+                <div style="font-size: 16px; font-weight: bold; color: #721c24;">
+                    {res.n_returns_adopter:.3f} returns × ₹{res.circular_unit_spread:.2f} = ₹{res.net_unit_circular_balance:,.2f}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown(f"""
+        <div style="background: #e8f4fd; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #1f77b4; margin-bottom: 15px;">
+            <strong>Net Adopter Economic Result (Lever 1 + Lever 2):</strong>  
+            <span style="font-size: 17px; font-weight: bold; color: #0b5394;">+₹{res.incremental_volume_margin:,.2f} − ₹{abs(res.net_unit_circular_balance):,.2f} = +₹{res.delta_ltc_adopter:,.2f}</span> per enrolled customer.  
+            Across the entire cohort at {custom_params['tradeback_adoption_rate']*100:.0f}% adoption ($\alpha = {custom_params['tradeback_adoption_rate']:.2f}$), this creates 
+            <span style="font-size: 17px; font-weight: bold; color: #0b5394;">+₹{res.delta_contribution_tradeback:,.2f}</span> in net accretion per acquired customer.
+        </div>
+        """, unsafe_allow_html=True)
+
         st.markdown("#### B. Mathematical Component Definitions")
         st.markdown("""
         * **Incremental Orders ($\\Delta N_{\\text{orders}}$):** $\\Delta f \\times (T_{\\text{active}} / 12) = 0.50 \\times 1.5 = \\mathbf{+0.75 \\text{ orders}}$.
@@ -769,14 +805,6 @@ with tab5:
           $$E[\\text{CAC}_{\\text{avoided}}] = \\text{CAC}_{\\text{rep}} \\times S_{\\text{ad}} \\times p_{\\text{paid-rep}} = 150 \\times 0.60 \\times 0.50 = \\mathbf{₹45.00 / return}$$
         * **TradeBack Credit Cost ($C_{\\text{TB}}$):** $\\text{AOV} \\times \\text{Credit}_{\\%} = 1,300 \\times 0.20 = \\mathbf{₹260.00 / return}$.
         * **Circular Unit Spread:** $E[R_{\\text{net-ops}}] + E[\\text{CAC}_{\\text{avoided}}] - C_{\\text{TB}} = 66.98 + 45.00 - 260.00 = \\mathbf{-₹148.02 / return}$.
-        """)
-        
-        st.markdown("#### C. Live 2-Lever Accretion Calculation")
-        st.markdown(f"""
-        * **Lever 1 (Incremental Volume Margin):** ${res.delta_n_orders:.2f} \\times ₹{res.cm_order:.2f} = \\mathbf{{+₹{res.incremental_volume_margin:,.2f}}}$
-        * **Lever 2 (Net Unit Circular Balance):** ${res.n_returns_adopter:.3f} \\times ₹{res.circular_unit_spread:.2f} = \\mathbf{{₹{res.net_unit_circular_balance:,.2f}}}$
-        * **Incremental Adopter LTC ($\\Delta \\text{{LTC}}_{{\\text{{adopter}}}}$):** $₹{res.incremental_volume_margin:.2f} - ₹{abs(res.net_unit_circular_balance):.2f} = \\mathbf{{+₹{res.delta_ltc_adopter:,.2f}}}$
-        * **Blended Cohort Accretion ($\\alpha = {custom_params['tradeback_adoption_rate']*100:.0f}\\%$):** ${custom_params['tradeback_adoption_rate']:.2f} \\times ₹{res.delta_ltc_adopter:.2f} = \\mathbf{{+₹{res.delta_contribution_tradeback:,.2f} \\text{{ / acquired customer}}}}$
         """)
         st.info(f"**System B Live Output:** Cohort LTC = **₹{res.ltc_cohort_tradeback:,.2f}** (Adopter: ₹{res.ltc_adopter:,.2f}) | Accretion vs Baseline: **+₹{res.delta_contribution_tradeback:,.2f} / customer**")
 
