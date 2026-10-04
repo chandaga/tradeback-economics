@@ -120,10 +120,10 @@ N_returns          = max(0, N_total - 1 - N_stranded)
 LTC_adopter = - CAC
               + N_total_adopter * (AOV * GM - C_fulfill)
               + N_returns * E[R_net]
-              + N_returns * (M_base * S_ad)
               - N_returns * (AOV * Credit_pct)
               - N_returns * P_D2C * Cannibal_rate * (AOV * GM)
-              - (N_eligible_repeats - N_returns) * M_base
+              - (N_total_adopter - 1) * M_base
+              + N_returns * (M_base * S_ad)
 ```
 
 #### 2. Non-Adopter Baseline Lifetime Contribution (`LTC_baseline`)
